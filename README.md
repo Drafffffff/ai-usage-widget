@@ -56,6 +56,27 @@ Right-click the desktop → **Edit Widgets** → search `AI Usage` → drag the 
 
 Credentials are only read. Nothing is uploaded or written back. The OpenCode key is stored in `config.json` with directory permissions `0700` and file permissions `0600`.
 
+## Updates and background behavior
+
+The widget extension cannot fetch data on its own. It is sandboxed (required by `pluginkit`) and cannot read `~/.codex` or Cursor's database. The menu-bar host is the only process that fetches from the APIs.
+
+| State | What happens |
+|---|---|
+| Host running | Fetches every 5 minutes and after wake, writes `widget.json`, calls `reloadAllTimelines()` |
+| Host quit | Widget keeps the last snapshot and its age; its 30-minute timeline only re-reads the file |
+| Network failure | Host keeps the previous snapshot (`widget-last-good.json`) and retries after 60 seconds |
+| After reboot | Nothing starts until the host is launched — install the login item if you want automatic updates |
+
+Enable autostart:
+
+```bash
+./autostart.sh install   # adds ~/Library/LaunchAgents/com.drafff.aiusagewidget.plist
+./autostart.sh status
+./autostart.sh remove
+```
+
+The host runs as a menu bar accessory: no Dock icon, no window, and automatic termination is disabled while it runs.
+
 ## Architecture
 
 ```mermaid
