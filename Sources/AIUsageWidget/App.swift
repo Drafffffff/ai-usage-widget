@@ -17,12 +17,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        ProcessInfo.processInfo.disableAutomaticTermination("Menu bar usage widget stays resident")
 
         store = Store()
         store.openSettings = { [weak self] in self?.showSettings() }
 
         setupStatusItem()
-        installURLEventHandler()
         store.publishWidgetSnapshot()
         store.refresh()
 
@@ -106,6 +106,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             window.appearance = NSAppearance(named: .darkAqua)
             window.isReleasedWhenClosed = false
+            window.isRestorable = false
             window.isOpaque = false
             window.backgroundColor = .clear
             window.hasShadow = true
@@ -117,21 +118,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
-    }
-
-    // MARK: - URL + reopen
-
-    private func installURLEventHandler() {
-        NSAppleEventManager.shared().setEventHandler(
-            self,
-            andSelector: #selector(handleGetURL(_:withReply:)),
-            forEventClass: AEEventClass(kInternetEventClass),
-            andEventID: AEEventID(kAEGetURL)
-        )
-    }
-
-    @objc private func handleGetURL(_ event: NSAppleEventDescriptor, withReply reply: NSAppleEventDescriptor) {
-        showSettings()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
