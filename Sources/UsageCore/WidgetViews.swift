@@ -140,15 +140,19 @@ struct UsageWidgetView: View {
     }
 }
 
+@ViewBuilder
+private func dashboardLink<Content: View>(for usage: ProviderUsage, @ViewBuilder content: () -> Content) -> some View {
+    Link(destination: usage.kind.dashboardURL) {
+        content()
+    }
+}
+
 private struct LargeProviderRow: View {
     let usage: ProviderUsage
     let monochrome: Bool
 
     var body: some View {
-        Link(destination: usage.kind.dashboardURL) {
-            card
-        }
-        .buttonStyle(.plain)
+        dashboardLink(for: usage) { card }
     }
 
     private var card: some View {
@@ -256,10 +260,7 @@ private struct MediumProviderRow: View {
     let monochrome: Bool
 
     var body: some View {
-        Link(destination: usage.kind.dashboardURL) {
-            card
-        }
-        .buttonStyle(.plain)
+        dashboardLink(for: usage) { card }
     }
 
     private var card: some View {

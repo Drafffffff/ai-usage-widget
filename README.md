@@ -11,7 +11,7 @@ Native macOS WidgetKit widget for the remaining budgets of **OpenCode Go**, **Op
 - **OpenCode Go 5-hour budget is the primary metric.** Weekly and monthly remaining budgets sit beside it as a compact inline distribution — no extra progress bars.
 - **One meter per provider**, filled by the *remaining* amount so the bar always matches the big number.
 - **Menu bar host** fetches every 5 minutes (and after wake), writes a snapshot into the widget container, and asks WidgetKit to reload.
-- **Tap a provider row** to open its usage dashboard; tap anywhere else to open the app settings.
+- **Tap a provider row** to open its usage dashboard; tapping the background launches the menu bar app.
 - **Full-color and monochrome widget styles** are both supported (macOS 26 widget style).
 - Native SwiftUI / WidgetKit. No Electron, no background web view.
 
@@ -24,8 +24,8 @@ Native macOS WidgetKit widget for the remaining budgets of **OpenCode Go**, **Op
 ## Build and install
 
 ```bash
-./build.sh      # compile host + widget extension, sign, package
-./install.sh    # copy to /Applications, register the extension, launch
+./build.sh      # compile host + widget extension, sign, package into dist/
+./install.sh    # move the build to /Applications, register the extension, launch
 ```
 
 If an `Apple Development` or `Developer ID Application` identity is present in the login keychain, `build.sh` signs with it automatically. To choose explicitly:
@@ -91,6 +91,7 @@ The extension uses the same `_NSExtensionMain` entry point as an Xcode-built app
 - The widget refreshes primarily through the host (`reloadAllTimelines`); the timeline itself falls back to a 30-minute refresh.
 - Replacing or moving the app re-registers the extension. If a widget keeps rendering an old timeline, remove and re-add it.
 - The host has no Dock icon and no window; use the menu bar gauge for **Refresh now**, **Settings**, **Open dashboard**, or **Quit**.
+- Keep only one copy of the app registered. Building to `dist/` and installing to `/Applications` leaves two bundles with the same identifier; `install.sh` moves the build so the widget always resolves the installed copy.
 
 ## License
 

@@ -16,14 +16,19 @@ pkill -f "$SOURCE/Contents/MacOS/AIUsageWidget" 2>/dev/null || true
 sleep 0.4
 
 rm -rf "$DEST"
-ditto "$SOURCE" "$DEST"
+mv "$SOURCE" "$DEST"
 codesign --verify --deep --strict "$DEST"
 
 LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
 "$LSREGISTER" -f "$DEST" >/dev/null 2>&1 || true
 
-pluginkit -r "$SOURCE/Contents/PlugIns/AIUsageWidget.appex" >/dev/null 2>&1 || true
-pluginkit -a "$APPEX" >/dev/null 2>&1 || true
+for attempt in 1 2 3 4; do
+    pluginkit -a "$APPEX" >/dev/null 2>&1 || true
+    if pluginkit -m -i com.drafff.aiusagewidget.widget >/dev/null 2>&1; then
+        break
+    fi
+    sleep 1
+done
 
 open "$DEST"
 echo "Installed: $DEST"

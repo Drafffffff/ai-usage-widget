@@ -41,7 +41,6 @@ struct UsageWidgetEntryView: View {
         .containerBackground(for: .widget) {
             WidgetBackdrop()
         }
-        .widgetURL(URL(string: "aiusagewidget://settings"))
     }
 }
 
