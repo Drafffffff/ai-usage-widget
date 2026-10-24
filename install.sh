@@ -31,4 +31,9 @@ for attempt in 1 2 3 4; do
 done
 
 open "$DEST"
+
+# chronod keeps the previous extension session until restarted; reload it so
+# the installed build is used immediately.
+killall chronod 2>/dev/null || true
+
 echo "Installed: $DEST"

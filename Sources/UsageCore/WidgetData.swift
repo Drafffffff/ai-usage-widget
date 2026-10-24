@@ -24,6 +24,18 @@ enum WidgetData {
         home.appendingPathComponent("Library/Application Support/AIUsageWidget/widget.json")
     }
 
+    static var widgetLastGoodFile: URL {
+        appSupportDirectory.appendingPathComponent("AIUsageWidget/widget-last-good.json")
+    }
+
+    static var hostLastGoodFile: URL {
+        home.appendingPathComponent("Library/Application Support/AIUsageWidget/widget-last-good.json")
+    }
+
+    static var containerLastGoodFile: URL {
+        containerRoot.appendingPathComponent("Library/Application Support/AIUsageWidget/widget-last-good.json")
+    }
+
     static var containerRoot: URL {
         home.appendingPathComponent("Library/Containers/\(widgetBundleID)/Data")
     }
@@ -51,21 +63,38 @@ enum WidgetData {
         write(data, to: widgetFile)
 
         let manager = FileManager.default
-        if manager.fileExists(atPath: containerRoot.path) {
+        let containerExists = manager.fileExists(atPath: containerRoot.path)
+        if containerExists {
             write(data, to: containerFile)
+        }
+
+        // Never leave the widget without a fallback: keep the last snapshot
+        // that actually contained providers.
+        if !snapshot.providers.isEmpty {
+            write(data, to: hostLastGoodFile)
+            write(data, to: widgetLastGoodFile)
+            if containerExists {
+                write(data, to: containerLastGoodFile)
+            }
         }
     }
 
     static func load() -> CachedSnapshot? {
         let manager = FileManager.default
-        for url in [widgetFile, containerFile, hostFile] {
-            if manager.fileExists(atPath: url.path),
-               let data = try? Data(contentsOf: url),
-               let snapshot = decode(data) {
-                return snapshot
-            }
+        let candidates = [
+            widgetFile, containerFile, hostFile,
+            widgetLastGoodFile, containerLastGoodFile, hostLastGoodFile,
+        ]
+        var emptySnapshot: CachedSnapshot?
+        for url in candidates {
+            guard manager.fileExists(atPath: url.path),
+                  let data = try? Data(contentsOf: url),
+                  let snapshot = decode(data)
+            else { continue }
+            if !snapshot.providers.isEmpty { return snapshot }
+            if emptySnapshot == nil { emptySnapshot = snapshot }
         }
-        return nil
+        return emptySnapshot
     }
 
     private static func write(_ data: Data, to url: URL) {

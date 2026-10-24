@@ -129,9 +129,9 @@ struct UsageWidgetView: View {
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text("No usage data yet")
+            Text("Waiting for usage data")
                 .font(.system(size: 11, weight: .semibold))
-            Text("Open AI Usage Widget to sync")
+            Text("Check the menu bar app and network")
                 .font(.system(size: 8.5))
                 .foregroundStyle(Palette.muted)
         }

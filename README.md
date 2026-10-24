@@ -89,6 +89,7 @@ The extension uses the same `_NSExtensionMain` entry point as an Xcode-built app
 
 - These are unofficial endpoints and may change.
 - The widget refreshes primarily through the host (`reloadAllTimelines`); the timeline itself falls back to a 30-minute refresh.
+- Failed refreshes keep the previous snapshot (plus a `widget-last-good.json` fallback) and retry after 60 seconds, so a network outage never blanks the widget.
 - Replacing or moving the app re-registers the extension. If a widget keeps rendering an old timeline, remove and re-add it.
 - The host has no Dock icon and no window; use the menu bar gauge for **Refresh now**, **Settings**, **Open dashboard**, or **Quit**.
 - Keep only one copy of the app registered. Building to `dist/` and installing to `/Applications` leaves two bundles with the same identifier; `install.sh` moves the build so the widget always resolves the installed copy.

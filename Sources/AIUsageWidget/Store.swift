@@ -16,6 +16,7 @@ final class Store: ObservableObject {
     var openSettings: () -> Void = {}
 
     private var refreshTask: Task<Void, Never>?
+    private var retryTask: Task<Void, Never>?
     private var lastRefresh: Date?
     private let defaults = UserDefaults.standard
 
@@ -69,8 +70,14 @@ final class Store: ObservableObject {
         let visible = providers.filter {
             enabledKinds.contains($0.kind) && !$0.windows.isEmpty
         }
-        // Never replace real widget data with launch-time placeholders.
-        guard lastRefresh != nil || !visible.isEmpty else { return }
+
+        // A failed refresh must never blank a widget that already has data.
+        if visible.isEmpty, !enabledKinds.isEmpty {
+            if let existing = WidgetData.load(), !existing.providers.isEmpty {
+                return
+            }
+        }
+        guard lastRefresh != nil || !visible.isEmpty || enabledKinds.isEmpty else { return }
 
         let snapshot = CachedSnapshot(providers: visible, savedAt: Date())
         WidgetData.write(snapshot)
@@ -86,7 +93,6 @@ final class Store: ObservableObject {
             guard var usage = fetched.first(where: { $0.kind == kind }) else { continue }
             if usage.state != .ok,
                let old = previous[kind],
-               old.state == .ok,
                !old.windows.isEmpty {
                 // Keep the last good numbers visible, but flag the failure.
                 usage.windows = old.windows
@@ -99,6 +105,24 @@ final class Store: ObservableObject {
         providers = merged
         lastRefresh = Date()
         publishWidgetSnapshot()
+
+        // Retry quickly after a transient failure instead of waiting 5 minutes.
+        if merged.contains(where: { $0.state == .error }) {
+            scheduleRetry()
+        } else {
+            retryTask?.cancel()
+            retryTask = nil
+        }
+    }
+
+    private func scheduleRetry() {
+        guard retryTask == nil else { return }
+        retryTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 60 * 1_000_000_000)
+            guard let self, !Task.isCancelled else { return }
+            self.retryTask = nil
+            self.refresh()
+        }
     }
 
     private func syncProviders() {
