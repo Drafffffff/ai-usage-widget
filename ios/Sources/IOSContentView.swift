@@ -4,7 +4,8 @@ import UniformTypeIdentifiers
 
 struct IOSContentView: View {
     @EnvironmentObject private var store: IOSStore
-    @State private var showPicker = false
+    @State private var showFolderPicker = false
+    @State private var showFilePicker = false
 
     var body: some View {
         ZStack {
@@ -28,12 +29,21 @@ struct IOSContentView: View {
         }
         .preferredColorScheme(.dark)
         .fileImporter(
-            isPresented: $showPicker,
+            isPresented: $showFolderPicker,
             allowedContentTypes: [.folder],
             allowsMultipleSelection: false
         ) { result in
             if case .success(let urls) = result, let url = urls.first {
-                store.choose(url)
+                store.chooseFolder(url)
+            }
+        }
+        .fileImporter(
+            isPresented: $showFilePicker,
+            allowedContentTypes: [.json],
+            allowsMultipleSelection: false
+        ) { result in
+            if case .success(let urls) = result, let url = urls.first {
+                store.chooseFile(url)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -56,7 +66,7 @@ struct IOSContentView: View {
             }
             .tint(Palette.muted)
             Button {
-                showPicker = true
+                showFolderPicker = true
             } label: {
                 Image(systemName: "folder")
                     .font(.system(size: 13, weight: .semibold))
@@ -78,17 +88,32 @@ struct IOSContentView: View {
                 .foregroundStyle(Palette.muted)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
-            Button {
-                showPicker = true
-            } label: {
-                Text("Choose sync folder")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Color.black.opacity(0.85))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(Color(hex: 0x00E676)))
+
+            HStack(spacing: 10) {
+                Button {
+                    showFolderPicker = true
+                } label: {
+                    Text("Choose folder")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Color.black.opacity(0.85))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(Color(hex: 0x00E676)))
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    showFilePicker = true
+                } label: {
+                    Text("Pick widget.json")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Palette.text)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(Color.white.opacity(0.08)))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
             .padding(.top, 2)
         }
         .frame(maxWidth: .infinity)
@@ -119,6 +144,14 @@ struct IOSContentView: View {
                 .font(.system(size: 8.5))
                 .foregroundStyle(Palette.faint.opacity(0.7))
                 .multilineTextAlignment(.center)
+            if !store.debugText.isEmpty {
+                Text(store.debugText)
+                    .font(.system(size: 7.5, design: .monospaced))
+                    .foregroundStyle(Palette.faint.opacity(0.65))
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 4)
+            }
         }
     }
 }

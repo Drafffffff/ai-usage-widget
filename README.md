@@ -58,9 +58,12 @@ cd ios && xcodegen generate && open AIUsageIOS.xcodeproj
 ```
 
 3. Select the `AIUsageIOS` scheme and your iPhone, choose your team under Signing, and Run.
-4. On first launch, tap the folder button and pick **iCloud Drive → AIUsageWidget**.
+4. On first launch, tap the folder button and pick **iCloud Drive → AIUsageWidget**, or tap **Pick widget.json** and choose the file directly.
+5. Add the home-screen widget: long-press the iPhone home screen → **+** → search **AI Usage** → choose Medium or Large.
 
-The iOS app refreshes when foregrounded and supports pull-to-refresh. A free Apple ID can install it, but the signature expires after 7 days; a paid developer account is needed for TestFlight or the App Store.
+The app writes each successful snapshot into the shared App Group container, and the WidgetKit extension reads it. The widget and app share data through `group.com.drafff.aiusagewidget.ios`; both are signed with the same team.
+
+The iOS app refreshes when foregrounded and supports pull-to-refresh. A free Apple ID can install it, but the signature expires after 7 days; re-run from Xcode to renew.
 
 ## Data sources
 
