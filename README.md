@@ -1,5 +1,7 @@
 # Headroom
 
+[Download the latest release](https://github.com/Drafffffff/headroom/releases/latest)
+
 Native macOS WidgetKit widget for the remaining budgets of **OpenCode Go**, **OpenAI Codex** and **Cursor**.
 
 ![Large widget](docs/preview-large.png)
