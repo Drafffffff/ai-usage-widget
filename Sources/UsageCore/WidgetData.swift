@@ -36,6 +36,13 @@ enum WidgetData {
         containerRoot.appendingPathComponent("Library/Application Support/AIUsageWidget/widget-last-good.json")
     }
 
+    /// Shared folder in the user's iCloud Drive, read by the iOS app.
+    static var iCloudDirectory: URL? {
+        let root = home.appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: root.path) else { return nil }
+        return root.appendingPathComponent("AIUsageWidget", isDirectory: true)
+    }
+
     static var containerRoot: URL {
         home.appendingPathComponent("Library/Containers/\(widgetBundleID)/Data")
     }
@@ -66,6 +73,10 @@ enum WidgetData {
         let containerExists = manager.fileExists(atPath: containerRoot.path)
         if containerExists {
             write(data, to: containerFile)
+        }
+
+        if let iCloud = iCloudDirectory {
+            write(data, to: iCloud.appendingPathComponent("widget.json"))
         }
 
         // Never leave the widget without a fallback: keep the last snapshot

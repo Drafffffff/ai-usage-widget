@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // MARK: - Preview data
 
@@ -400,7 +401,7 @@ struct WidgetPreviewCard: View {
             UsageWidgetView(
                 snapshot: snapshot,
                 size: height > 220 ? .large : .medium,
-                monochromeOverride: monochrome ? true : nil
+                monochromeOverride: monochrome
             )
         }
         .frame(width: width, height: height)

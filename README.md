@@ -46,6 +46,22 @@ The build prints the team identifier and verifies the bundle. Without an Apple i
 
 Right-click the desktop → **Edit Widgets** → search `AI Usage` → drag the medium or large widget onto the desktop.
 
+## iOS app
+
+`ios/` contains a SwiftUI iPhone app that renders the same large widget layout. It does **not** store provider credentials: the menu-bar host writes the snapshot to iCloud Drive, and the iOS app reads it.
+
+1. On the Mac, the host writes `~/Library/Mobile Documents/com~apple~CloudDocs/AIUsageWidget/widget.json` on every refresh.
+2. Generate the project and open it:
+
+```bash
+cd ios && xcodegen generate && open AIUsageIOS.xcodeproj
+```
+
+3. Select the `AIUsageIOS` scheme and your iPhone, choose your team under Signing, and Run.
+4. On first launch, tap the folder button and pick **iCloud Drive → AIUsageWidget**.
+
+The iOS app refreshes when foregrounded and supports pull-to-refresh. A free Apple ID can install it, but the signature expires after 7 days; a paid developer account is needed for TestFlight or the App Store.
+
 ## Data sources
 
 | Provider | Endpoint | Credential |

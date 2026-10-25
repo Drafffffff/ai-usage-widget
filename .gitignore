@@ -3,3 +3,5 @@ build/
 dist/
 .DS_Store
 *.xcuserstate
+ios/*.xcodeproj
+ios/Resources/Info.plist
