@@ -60,7 +60,7 @@ struct AIUsageWidget: Widget {
         StaticConfiguration(kind: "AIUsageWidgetIOS", provider: UsageProvider()) { entry in
             UsageEntryView(entry: entry)
         }
-        .configurationDisplayName("AI Usage")
+        .configurationDisplayName("Headroom")
         .description("Remaining OpenCode Go, OpenAI and Cursor usage.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }

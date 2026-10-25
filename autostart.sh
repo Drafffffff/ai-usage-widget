@@ -3,7 +3,7 @@ set -euo pipefail
 
 LABEL="com.drafff.aiusagewidget"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
-APP="${AIUSAGE_APP_PATH:-/Applications/AI Usage Widget.app}"
+APP="${AIUSAGE_APP_PATH:-/Applications/Headroom.app}"
 ACTION="${1:-status}"
 
 case "$ACTION" in

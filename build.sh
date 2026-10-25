@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 SDK="$(xcrun --show-sdk-path)"
 TARGET="arm64-apple-macos14.0"
 BUILD="build"
-APP="dist/AI Usage Widget.app"
+APP="dist/Headroom.app"
 APPEX="$APP/Contents/PlugIns/AIUsageWidget.appex"
 
 mkdir -p "$BUILD"
@@ -48,9 +48,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key>
-    <string>AI Usage Widget</string>
+    <string>Headroom</string>
     <key>CFBundleDisplayName</key>
-    <string>AI Usage Widget</string>
+    <string>Headroom</string>
     <key>CFBundleIdentifier</key>
     <string>com.drafff.aiusagewidget</string>
     <key>CFBundleExecutable</key>
@@ -60,7 +60,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0</string>
+    <string>1.0.0</string>
     <key>CFBundleVersion</key>
     <string>__BUILD__</string>
     <key>LSMinimumSystemVersion</key>
@@ -81,7 +81,7 @@ cat > "$APPEX/Contents/Info.plist" <<'PLIST'
     <key>CFBundleName</key>
     <string>AIUsageWidgetExtension</string>
     <key>CFBundleDisplayName</key>
-    <string>AI Usage Widget</string>
+    <string>Headroom</string>
     <key>CFBundleIdentifier</key>
     <string>com.drafff.aiusagewidget.widget</string>
     <key>CFBundleExecutable</key>
@@ -89,7 +89,7 @@ cat > "$APPEX/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>CFBundleShortVersionString</key>
-    <string>2.0</string>
+    <string>1.0.0</string>
     <key>CFBundleVersion</key>
     <string>__BUILD__</string>
     <key>CFBundleInfoDictionaryVersion</key>

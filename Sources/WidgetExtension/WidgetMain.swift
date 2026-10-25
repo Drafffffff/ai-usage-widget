@@ -49,7 +49,7 @@ struct AIUsageWidget: Widget {
         StaticConfiguration(kind: "AIUsageWidget", provider: UsageTimelineProvider()) { entry in
             UsageWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("AI Usage")
+        .configurationDisplayName("Headroom")
         .description("Remaining OpenCode Go, OpenAI and Cursor usage.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }

@@ -1,4 +1,4 @@
-# AI Usage Widget
+# Headroom
 
 Native macOS WidgetKit widget for the remaining budgets of **OpenCode Go**, **OpenAI Codex** and **Cursor**.
 
@@ -44,7 +44,7 @@ The build prints the team identifier and verifies the bundle. Without an Apple i
 
 ## Add the widget
 
-Right-click the desktop → **Edit Widgets** → search `AI Usage` → drag the medium or large widget onto the desktop.
+Right-click the desktop → **Edit Widgets** → search `Headroom` → drag the medium or large widget onto the desktop.
 
 ## iOS app
 
@@ -59,7 +59,7 @@ cd ios && xcodegen generate && open AIUsageIOS.xcodeproj
 
 3. Select the `AIUsageIOS` scheme and your iPhone, choose your team under Signing, and Run.
 4. On first launch, tap the folder button and pick **iCloud Drive → AIUsageWidget**, or tap **Pick widget.json** and choose the file directly.
-5. Add the home-screen widget: long-press the iPhone home screen → **+** → search **AI Usage** → choose Medium or Large.
+5. Add the home-screen widget: long-press the iPhone home screen → **+** → search **Headroom** → choose Medium or Large.
 
 The app writes each successful snapshot into the shared App Group container, and the WidgetKit extension reads it. The widget and app share data through `group.com.drafff.aiusagewidget.ios`; both are signed with the same team.
 

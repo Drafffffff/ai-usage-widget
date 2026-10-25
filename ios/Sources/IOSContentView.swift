@@ -53,7 +53,7 @@ struct IOSContentView: View {
 
     private var header: some View {
         HStack(spacing: 12) {
-            Text("AI USAGE")
+            Text("HEADROOM")
                 .font(.system(size: 10, weight: .semibold))
                 .tracking(2.4)
                 .foregroundStyle(Palette.muted)
@@ -83,7 +83,7 @@ struct IOSContentView: View {
             Text("Waiting for sync")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(Palette.text)
-            Text("Run AI Usage Widget on your Mac, then choose the AIUsageWidget folder in iCloud Drive.")
+            Text("Run Headroom on your Mac, then choose the AIUsageWidget folder in iCloud Drive.")
                 .font(.system(size: 11))
                 .foregroundStyle(Palette.muted)
                 .multilineTextAlignment(.center)

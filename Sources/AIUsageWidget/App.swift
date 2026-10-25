@@ -44,7 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let button = statusItem.button {
             let image = NSImage(
                 systemSymbolName: "gauge.with.dots.needle.50percent",
-                accessibilityDescription: "AI Usage"
+                accessibilityDescription: "Headroom"
             )
             image?.isTemplate = true
             button.image = image

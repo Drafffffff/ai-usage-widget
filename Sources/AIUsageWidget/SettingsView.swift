@@ -46,7 +46,7 @@ struct SettingsView: View {
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("AI USAGE WIDGET")
+                Text("HEADROOM")
                     .font(.system(size: 10, weight: .semibold))
                     .tracking(2.2)
                     .foregroundStyle(Palette.muted)
