@@ -23,6 +23,10 @@ struct ProviderGlyph: View {
             OpenCodeMark()
                 .stroke(kind.accent, style: StrokeStyle(lineWidth: 1.7, lineCap: .round, lineJoin: .round))
                 .frame(width: size * 0.52, height: size * 0.46)
+        case .claude:
+            ClaudeMark()
+                .stroke(kind.accent, style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+                .frame(width: size * 0.56, height: size * 0.56)
         case .openai:
             OpenAIKnot()
                 .stroke(kind.accent, style: StrokeStyle(lineWidth: 1.15, lineCap: .round, lineJoin: .round))
@@ -68,6 +72,23 @@ struct OpenAIKnot: Shape {
             if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
         }
         path.closeSubpath()
+        return path
+    }
+}
+
+/// Eight-ray sunburst for Claude.
+struct ClaudeMark: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let radius = min(rect.width, rect.height) / 2
+        for index in 0..<8 {
+            let angle = CGFloat(index) * .pi / 4 - .pi / 2
+            let inner = radius * (index.isMultiple(of: 2) ? 0.22 : 0.38)
+            let outer = index.isMultiple(of: 2) ? radius : radius * 0.92
+            path.move(to: CGPoint(x: center.x + cos(angle) * inner, y: center.y + sin(angle) * inner))
+            path.addLine(to: CGPoint(x: center.x + cos(angle) * outer, y: center.y + sin(angle) * outer))
+        }
         return path
     }
 }

@@ -60,7 +60,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>1.1.0</string>
     <key>CFBundleVersion</key>
     <string>__BUILD__</string>
     <key>LSMinimumSystemVersion</key>
@@ -89,7 +89,7 @@ cat > "$APPEX/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
+    <string>1.1.0</string>
     <key>CFBundleVersion</key>
     <string>__BUILD__</string>
     <key>CFBundleInfoDictionaryVersion</key>
@@ -116,7 +116,7 @@ plutil -replace CFBundleVersion -string "$BUILD_NUMBER" "$APPEX/Contents/Info.pl
 echo "Signing…"
 SIGN_ID="${AIUSAGE_SIGN_IDENTITY:-}"
 if [ -z "$SIGN_ID" ]; then
-    SIGN_ID="$(security find-identity -v -p codesigning 2>/dev/null | sed -n -e 's/.*"\(Apple Development:[^"]*\)".*/\1/p' -e 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)"
+    SIGN_ID="$(security find-identity -v -p codesigning 2>/dev/null | awk '/Apple Development:|Developer ID Application:/ {print $2; exit}')"
 fi
 if [ -z "$SIGN_ID" ]; then
     SIGN_ID="-"

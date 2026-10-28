@@ -59,6 +59,7 @@ enum UsageFetcher {
         do {
             switch kind {
             case .opencodeGo: return try await openCodeGo()
+            case .claude: return try await claude()
             case .openai: return try await codex()
             case .cursor: return try await cursor()
             }
@@ -79,6 +80,7 @@ enum UsageFetcher {
             needsAuth = true
             switch kind {
             case .opencodeGo: message = "API Key 无效，请在设置中更新"
+            case .claude: message = "Claude Code 登录已过期，请打开 Claude Code 刷新"
             case .openai: message = "Codex 登录已过期，请运行 codex login"
             case .cursor: message = "Cursor 登录已过期，请打开 Cursor"
             }
@@ -150,6 +152,68 @@ enum UsageFetcher {
             plan: plan,
             windows: windows,
             stats: [],
+            message: nil,
+            updatedAt: Date()
+        )
+    }
+
+    // MARK: - Claude Code
+
+    private static func claude() async throws -> ProviderUsage {
+        guard let credentials = LocalCredentials.claudeCredentials() else {
+            throw UsageError.missingCredentials("未找到 Claude Code 登录，请先运行 claude 登录")
+        }
+        if let expiry = credentials.expiresAt,
+           expiry < Date().addingTimeInterval(30) {
+            throw UsageError.missingCredentials("Claude Code 登录已过期，请打开 Claude Code 刷新")
+        }
+
+        let url = URL(string: "https://api.anthropic.com/api/oauth/usage")!
+        let (_, json) = try await HTTP.json(url, headers: [
+            "Authorization": "Bearer \(credentials.accessToken)",
+            "anthropic-beta": "oauth-2025-04-20",
+            "Accept": "application/json",
+            "User-Agent": "Headroom/1.0",
+        ])
+        guard let root = json as? [String: Any] else {
+            throw UsageError.badResponse("Claude 返回了无法识别的数据")
+        }
+
+        let specs: [(String, String, Int)] = [
+            ("five_hour", "5H", 18_000),
+            ("seven_day", "WEEK", 604_800),
+        ]
+        var windows: [WindowUsage] = []
+        for (field, label, seconds) in specs {
+            guard let bucket = root[field] as? [String: Any],
+                  let utilization = number(bucket["utilization"])
+            else { continue }
+            windows.append(WindowUsage(
+                label: label,
+                usedPercent: clamp(utilization),
+                resetsAt: Parse.date(bucket["resets_at"] as? String),
+                windowSeconds: seconds
+            ))
+        }
+        guard !windows.isEmpty else {
+            throw UsageError.badResponse("该 Claude 账号没有返回用量窗口")
+        }
+
+        var stats: [UsageStat] = []
+        if let extra = root["extra_usage"] as? [String: Any],
+           (extra["is_enabled"] as? Bool) == true,
+           let used = number(extra["used_credits"]),
+           let limit = number(extra["monthly_limit"]) {
+            stats.append(UsageStat(label: "credits", value: "\(Format.money(cents: used * 100))/\(Format.money(cents: limit * 100))"))
+        }
+
+        let plan = credentials.subscriptionType?.uppercased()
+        return ProviderUsage(
+            kind: .claude,
+            state: .ok,
+            plan: plan,
+            windows: windows,
+            stats: stats,
             message: nil,
             updatedAt: Date()
         )

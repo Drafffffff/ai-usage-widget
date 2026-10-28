@@ -31,7 +31,7 @@ struct SettingsView: View {
             footer
         }
         .padding(22)
-        .frame(width: 430, height: 474)
+        .frame(width: 430, height: 498)
         .background(Color(hex: 0x0B0B0D))
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
@@ -106,6 +106,11 @@ struct SettingsView: View {
     private var sourcesSection: some View {
         VStack(alignment: .leading, spacing: 9) {
             sectionTitle("DATA SOURCES")
+            sourceRow(
+                title: "Claude Code",
+                detail: "Keychain · Claude Code-credentials",
+                ready: LocalCredentials.claudeReady()
+            )
             sourceRow(
                 title: "Codex / ChatGPT",
                 detail: "~/.codex/auth.json",

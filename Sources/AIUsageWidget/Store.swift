@@ -28,6 +28,12 @@ final class Store: ObservableObject {
         }
         if enabledKinds.isEmpty { enabledKinds = Set(ProviderKind.allCases) }
 
+        if defaults.object(forKey: "didEnableClaude") == nil {
+            enabledKinds.insert(.claude)
+            defaults.set(true, forKey: "didEnableClaude")
+            persistEnabledKinds()
+        }
+
         let cached = Dictionary(
             uniqueKeysWithValues: (WidgetData.load()?.providers ?? []).map { ($0.kind, $0) }
         )

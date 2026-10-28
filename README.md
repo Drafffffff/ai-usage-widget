@@ -2,7 +2,7 @@
 
 [Download the latest release](https://github.com/Drafffffff/headroom/releases/latest)
 
-Native macOS WidgetKit widget for the remaining budgets of **OpenCode Go**, **OpenAI Codex** and **Cursor**.
+Native macOS and iOS widgets for the remaining budgets of **OpenCode Go**, **Anthropic Claude**, **OpenAI Codex** and **Cursor**.
 
 ![Large widget](docs/preview-large.png)
 
@@ -11,6 +11,8 @@ Native macOS WidgetKit widget for the remaining budgets of **OpenCode Go**, **Op
 ## Features
 
 - **OpenCode Go 5-hour budget is the primary metric.** Weekly and monthly remaining budgets sit beside it as a compact inline distribution — no extra progress bars.
+- **Claude (Pro/Max)** shows its 5-hour session and weekly quotas, read from Claude Code's OAuth credentials.
+- Four providers fit the same medium and large widget without extra bars.
 - **One meter per provider**, filled by the *remaining* amount so the bar always matches the big number.
 - **Menu bar host** fetches every 5 minutes (and after wake), writes a snapshot into the widget container, and asks WidgetKit to reload.
 - **Tap a provider row** to open its usage dashboard; tapping the background launches the menu bar app.
@@ -72,10 +74,11 @@ The iOS app refreshes when foregrounded and supports pull-to-refresh. A free App
 | Provider | Endpoint | Credential |
 |---|---|---|
 | OpenCode Go | `GET https://opencode.ai/zen/go/v1/usage` | API key from `~/Library/Application Support/AIUsageWidget/config.json`, `OPENCODE_API_KEY`, or `~/.local/share/opencode/auth.json` |
+| Claude (Pro/Max) | `GET https://api.anthropic.com/api/oauth/usage` | Claude Code OAuth token from the macOS Keychain (`Claude Code-credentials`) or `~/.claude/.credentials.json` (read-only) |
 | OpenAI Codex | `GET https://chatgpt.com/backend-api/wham/usage` | `~/.codex/auth.json` (read-only) |
 | Cursor | `POST https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage` | Cursor `state.vscdb` session token (read-only) |
 
-Credentials are only read. Nothing is uploaded or written back. The OpenCode key is stored in `config.json` with directory permissions `0700` and file permissions `0600`.
+Credentials are only read. Nothing is uploaded or written back. If the Claude token has expired, open Claude Code once to refresh it; Headroom never writes to Claude's credentials. The OpenCode key is stored in `config.json` with directory permissions `0700` and file permissions `0600`.
 
 ## Updates and background behavior
 

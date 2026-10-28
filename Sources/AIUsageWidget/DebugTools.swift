@@ -35,6 +35,7 @@ enum DebugTools {
     }
 
     static func preview(directory: String, live: Bool, cached: Bool, monochrome: Bool) {
+        PreviewFlags.disableLinks = true
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.prohibited)
         Task { @MainActor in

@@ -46,6 +46,12 @@ struct CodexCredentials {
     var accountID: String?
 }
 
+struct ClaudeCredentials {
+    var accessToken: String
+    var subscriptionType: String?
+    var expiresAt: Date?
+}
+
 enum LocalCredentials {
     static var home: URL { FileManager.default.homeDirectoryForCurrentUser }
 
@@ -79,6 +85,43 @@ enum LocalCredentials {
         if let env = ProcessInfo.processInfo.environment["OPENCODE_API_KEY"], !env.isEmpty { return "OPENCODE_API_KEY" }
         if openCodeKey() != nil { return "~/.local/share/opencode/auth.json" }
         return nil
+    }
+
+    // MARK: Claude Code
+
+    static var claudeCredentialsFile: URL {
+        home.appendingPathComponent(".claude/.credentials.json")
+    }
+
+    static func claudeCredentials() -> ClaudeCredentials? {
+        var data: Data?
+        if FileManager.default.fileExists(atPath: claudeCredentialsFile.path) {
+            data = try? Data(contentsOf: claudeCredentialsFile)
+        }
+        if data == nil {
+            data = keychainPassword(service: "Claude Code-credentials")
+        }
+        guard let data,
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let oauth = root["claudeAiOauth"] as? [String: Any],
+              let token = oauth["accessToken"] as? String,
+              !token.isEmpty
+        else { return nil }
+
+        let rawExpiry = (oauth["expiresAt"] as? NSNumber)?.doubleValue
+        let expiry: Date? = rawExpiry.map { value in
+            Date(timeIntervalSince1970: value > 1e11 ? value / 1000 : value)
+        }
+        return ClaudeCredentials(
+            accessToken: token,
+            subscriptionType: oauth["subscriptionType"] as? String,
+            expiresAt: expiry
+        )
+    }
+
+    static func claudeReady() -> Bool {
+        if FileManager.default.fileExists(atPath: claudeCredentialsFile.path) { return true }
+        return keychainExists(service: "Claude Code-credentials")
     }
 
     // MARK: Codex / OpenAI
@@ -132,6 +175,35 @@ enum LocalCredentials {
     }
 
     // MARK: helpers
+
+    private static func keychainExists(service: String) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        process.arguments = ["find-generic-password", "-s", service]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return false }
+        let deadline = Date().addingTimeInterval(3)
+        while process.isRunning && Date() < deadline { usleep(50_000) }
+        if process.isRunning { process.terminate(); return false }
+        return process.terminationStatus == 0
+    }
+
+    private static func keychainPassword(service: String) -> Data? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        process.arguments = ["find-generic-password", "-s", service, "-w"]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let deadline = Date().addingTimeInterval(10)
+        while process.isRunning && Date() < deadline { usleep(50_000) }
+        if process.isRunning { process.terminate(); return nil }
+        guard process.terminationStatus == 0 else { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return data.isEmpty ? nil : data
+    }
 
     private static func clean(_ raw: String) -> String? {
         var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)

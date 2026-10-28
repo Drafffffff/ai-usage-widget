@@ -2,6 +2,7 @@ import Foundation
 
 enum ProviderKind: String, Codable, CaseIterable, Identifiable {
     case opencodeGo = "opencode-go"
+    case claude = "claude"
     case openai = "openai"
     case cursor = "cursor"
 
@@ -10,6 +11,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .opencodeGo: return "OpenCode Go"
+        case .claude: return "Claude"
         case .openai: return "OpenAI Codex"
         case .cursor: return "Cursor"
         }
@@ -18,6 +20,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
     var settingsName: String {
         switch self {
         case .opencodeGo: return "OpenCode Go"
+        case .claude: return "Anthropic Claude (Pro/Max)"
         case .openai: return "OpenAI (ChatGPT / Codex)"
         case .cursor: return "Cursor"
         }
@@ -26,6 +29,7 @@ enum ProviderKind: String, Codable, CaseIterable, Identifiable {
     var dashboardURL: URL {
         switch self {
         case .opencodeGo: return URL(string: "https://opencode.ai/console")!
+        case .claude: return URL(string: "https://claude.ai/settings/usage")!
         case .openai: return URL(string: "https://chatgpt.com/codex/settings/usage")!
         case .cursor: return URL(string: "https://cursor.com/dashboard?tab=usage")!
         }
@@ -68,8 +72,8 @@ struct ProviderUsage: Codable, Identifiable, Hashable {
     var id: String { kind.rawValue }
 
     var primaryWindow: WindowUsage? {
-        // OpenCode Go: the 5-hour window is the daily-driver budget.
-        if kind == .opencodeGo,
+        // OpenCode Go and Claude Code: the 5-hour window is the daily-driver budget.
+        if (kind == .opencodeGo || kind == .claude),
            let fiveHour = windows.first(where: { $0.windowSeconds == 18_000 || $0.label == "5H" }) {
             return fiveHour
         }

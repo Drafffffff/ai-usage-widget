@@ -21,6 +21,18 @@ enum PreviewData {
                     updatedAt: now
                 ),
                 ProviderUsage(
+                    kind: .claude,
+                    state: .ok,
+                    plan: "PRO",
+                    windows: [
+                        WindowUsage(label: "5H", usedPercent: 12, resetsAt: now.addingTimeInterval(2 * 3600), windowSeconds: 18_000),
+                        WindowUsage(label: "WEEK", usedPercent: 40, resetsAt: now.addingTimeInterval(5 * 86_400), windowSeconds: 604_800),
+                    ],
+                    stats: [],
+                    message: nil,
+                    updatedAt: now
+                ),
+                ProviderUsage(
                     kind: .openai,
                     state: .ok,
                     plan: "PRO LITE",
@@ -86,22 +98,22 @@ struct UsageWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 10)
+            Spacer(minLength: size == .large ? 6 : 4)
             header
 
             if let providers = snapshot?.providers, !providers.isEmpty {
                 if size == .large {
                     ForEach(providers) { usage in
-                        Spacer(minLength: 8)
+                        Spacer(minLength: 5)
                         LargeProviderRow(usage: usage, monochrome: monochrome)
                     }
                 } else {
                     ForEach(providers) { usage in
-                        Spacer(minLength: 8)
+                        Spacer(minLength: 3)
                         MediumProviderRow(usage: usage, monochrome: monochrome)
                     }
                 }
-                Spacer(minLength: size == .large ? 8 : 12)
+                Spacer(minLength: size == .large ? 6 : 8)
             } else {
                 Spacer(minLength: 8)
                 emptyState
@@ -141,10 +153,19 @@ struct UsageWidgetView: View {
     }
 }
 
+enum PreviewFlags {
+    /// ImageRenderer cannot snapshot Link controls; previews disable them.
+    static var disableLinks = false
+}
+
 @ViewBuilder
 private func dashboardLink<Content: View>(for usage: ProviderUsage, @ViewBuilder content: () -> Content) -> some View {
-    Link(destination: usage.kind.dashboardURL) {
+    if PreviewFlags.disableLinks {
         content()
+    } else {
+        Link(destination: usage.kind.dashboardURL) {
+            content()
+        }
     }
 }
 
@@ -157,14 +178,14 @@ private struct LargeProviderRow: View {
     }
 
     private var card: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .center, spacing: 7) {
-                ProviderGlyph(kind: usage.kind, size: 18)
+                ProviderGlyph(kind: usage.kind, size: 17)
 
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 5) {
                         Text(usage.kind.title)
-                            .font(.system(size: 11.5, weight: .semibold))
+                            .font(.system(size: 10.5, weight: .semibold))
                             .lineLimit(1)
                         if let plan = usage.plan, !plan.isEmpty {
                             Text(plan)
@@ -184,7 +205,7 @@ private struct LargeProviderRow: View {
                 NeonBar(
                     fraction: (100 - primary.usedPercent) / 100,
                     accent: usage.accent,
-                    height: 6,
+                    height: 5,
                     showsTicks: false,
                     monochrome: monochrome
                 )
@@ -202,13 +223,13 @@ private struct LargeProviderRow: View {
                     }
                     Spacer(minLength: 4)
                     Text("resets \(Format.countdown(primary.resetsAt))")
-                        .font(.system(size: 8, weight: .medium, design: .monospaced))
+                        .font(.system(size: 7.5, weight: .medium, design: .monospaced))
                         .foregroundStyle(Palette.muted)
                 }
             }
         }
-        .padding(.horizontal, 11)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.white.opacity(0.045))
@@ -232,15 +253,15 @@ private struct LargeProviderRow: View {
     private var percent: some View {
         HStack(alignment: .top, spacing: 2) {
             Text("\(usage.remainingPercent ?? 0)")
-                .font(.system(size: 32, weight: .semibold))
+                .font(.system(size: 27, weight: .semibold))
                 .monospacedDigit()
-                .tracking(-1.4)
+                .tracking(-1.1)
             VStack(alignment: .leading, spacing: 1) {
                 Text("%")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 8, weight: .medium))
                     .foregroundStyle(Palette.faint)
                 Text(heroLabel)
-                    .font(.system(size: 7.5, weight: .semibold))
+                    .font(.system(size: 7, weight: .semibold))
                     .tracking(0.7)
                     .foregroundStyle(Palette.muted)
             }
@@ -265,13 +286,13 @@ private struct MediumProviderRow: View {
     }
 
     private var card: some View {
-        VStack(spacing: 4) {
-            HStack(alignment: .center, spacing: 7) {
-                ProviderGlyph(kind: usage.kind, size: 15)
+        VStack(spacing: 2.5) {
+            HStack(alignment: .center, spacing: 6) {
+                ProviderGlyph(kind: usage.kind, size: 14)
 
                 VStack(alignment: .leading, spacing: 1) {
                     Text(usage.kind.title)
-                        .font(.system(size: 9.5, weight: .semibold))
+                        .font(.system(size: 9, weight: .semibold))
                         .lineLimit(1)
                     HStack(spacing: 4) {
                         if !otherWindows.isEmpty {
@@ -291,15 +312,15 @@ private struct MediumProviderRow: View {
 
                 HStack(alignment: .top, spacing: 1.5) {
                     Text("\(usage.remainingPercent ?? 0)")
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(.system(size: 19, weight: .semibold))
                         .monospacedDigit()
-                        .tracking(-0.9)
+                        .tracking(-0.7)
                     VStack(alignment: .leading, spacing: 0.5) {
                         Text("%")
-                            .font(.system(size: 7.5, weight: .medium))
+                            .font(.system(size: 7, weight: .medium))
                             .foregroundStyle(Palette.faint)
                         Text(heroLabel)
-                            .font(.system(size: 6.5, weight: .semibold))
+                            .font(.system(size: 6, weight: .semibold))
                             .tracking(0.5)
                             .foregroundStyle(Palette.muted)
                     }
@@ -311,7 +332,7 @@ private struct MediumProviderRow: View {
                 NeonBar(
                     fraction: (100 - primary.usedPercent) / 100,
                     accent: usage.accent,
-                    height: 3.5,
+                    height: 3,
                     showsTicks: false,
                     monochrome: monochrome
                 )
@@ -365,7 +386,7 @@ private struct WindowDistribution: View {
             ForEach(windows) { window in
                 HStack(spacing: 2.5) {
                     Text(label(for: window))
-                        .font(.system(size: compact ? 6 : 6.5, weight: .semibold))
+                        .font(.system(size: compact ? 5.5 : 6.5, weight: .semibold))
                         .tracking(0.5)
                         .foregroundStyle(Palette.faint)
                     Text("\(Int((100 - window.usedPercent).rounded()))%")

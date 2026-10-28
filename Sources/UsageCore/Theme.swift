@@ -26,6 +26,7 @@ extension ProviderKind {
     var accent: Color {
         switch self {
         case .opencodeGo: return Color(hex: 0x00E676)
+        case .claude: return Color(hex: 0xD97757)
         case .openai: return Color(hex: 0x5AC8FA)
         case .cursor: return Color(hex: 0xFFB020)
         }

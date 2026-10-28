@@ -97,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let controller = NSHostingController(rootView: SettingsView(store: store) { [weak self] in
                 self?.settingsWindow?.orderOut(nil)
             })
-            let size = NSSize(width: 430, height: 476)
+            let size = NSSize(width: 430, height: 500)
             let window = SettingsWindow(
                 contentRect: NSRect(origin: .zero, size: size),
                 styleMask: [.borderless],
