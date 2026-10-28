@@ -80,7 +80,7 @@ enum UsageFetcher {
             needsAuth = true
             switch kind {
             case .opencodeGo: message = "API Key 无效，请在设置中更新"
-            case .claude: message = "Claude Code 登录已过期，请打开 Claude Code 刷新"
+            case .claude: message = "Claude 会话已失效，请保持 Claude 桌面应用登录"
             case .openai: message = "Codex 登录已过期，请运行 codex login"
             case .cursor: message = "Cursor 登录已过期，请打开 Cursor"
             }
@@ -160,8 +160,45 @@ enum UsageFetcher {
     // MARK: - Claude Code
 
     private static func claude() async throws -> ProviderUsage {
+        var appError: Error?
+
+        // Primary source: the Claude desktop app's own web session.
+        if let session = LocalCredentials.claudeAppSession() {
+            do {
+                return try await claudeApp(session)
+            } catch {
+                appError = error
+            }
+        }
+
+        // Fallback: Claude Code's OAuth token.
+        do {
+            return try await claudeCode()
+        } catch {
+            if appError != nil {
+                throw UsageError.missingCredentials("Claude 应用会话不可用，请保持 Claude 桌面应用登录")
+            }
+            throw error
+        }
+    }
+
+    private static func claudeApp(_ session: ClaudeAppSession) async throws -> ProviderUsage {
+        let url = URL(string: "https://claude.ai/api/organizations/\(session.organization)/usage")!
+        let (_, json) = try await HTTP.json(url, headers: [
+            "Cookie": "sessionKey=\(session.sessionKey); lastActiveOrg=\(session.organization)",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Claude/4.29.0 Chrome/130.0.0.0 Electron/33.0.0 Safari/537.36",
+        ])
+        guard let root = json as? [String: Any] else {
+            throw UsageError.badResponse("Claude 应用返回了无法识别的数据")
+        }
+        let plan = LocalCredentials.claudeCredentials()?.subscriptionType?.uppercased()
+        return try claudeUsage(root: root, plan: plan, includeExtra: false)
+    }
+
+    private static func claudeCode() async throws -> ProviderUsage {
         guard let credentials = LocalCredentials.claudeCredentials() else {
-            throw UsageError.missingCredentials("未找到 Claude Code 登录，请先运行 claude 登录")
+            throw UsageError.missingCredentials("未找到 Claude 登录，请保持 Claude 桌面应用登录")
         }
         if let expiry = credentials.expiresAt,
            expiry < Date().addingTimeInterval(30) {
@@ -178,7 +215,18 @@ enum UsageFetcher {
         guard let root = json as? [String: Any] else {
             throw UsageError.badResponse("Claude 返回了无法识别的数据")
         }
+        return try claudeUsage(
+            root: root,
+            plan: credentials.subscriptionType?.uppercased(),
+            includeExtra: true
+        )
+    }
 
+    private static func claudeUsage(
+        root: [String: Any],
+        plan: String?,
+        includeExtra: Bool
+    ) throws -> ProviderUsage {
         let specs: [(String, String, Int)] = [
             ("five_hour", "5H", 18_000),
             ("seven_day", "WEEK", 604_800),
@@ -200,14 +248,17 @@ enum UsageFetcher {
         }
 
         var stats: [UsageStat] = []
-        if let extra = root["extra_usage"] as? [String: Any],
+        if includeExtra,
+           let extra = root["extra_usage"] as? [String: Any],
            (extra["is_enabled"] as? Bool) == true,
            let used = number(extra["used_credits"]),
            let limit = number(extra["monthly_limit"]) {
-            stats.append(UsageStat(label: "credits", value: "\(Format.money(cents: used * 100))/\(Format.money(cents: limit * 100))"))
+            stats.append(UsageStat(
+                label: "credits",
+                value: "\(Format.money(cents: used * 100))/\(Format.money(cents: limit * 100))"
+            ))
         }
 
-        let plan = credentials.subscriptionType?.uppercased()
         return ProviderUsage(
             kind: .claude,
             state: .ok,

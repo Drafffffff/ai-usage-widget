@@ -106,7 +106,20 @@ final class IOSStore: ObservableObject {
             }
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            snapshot = try decoder.decode(CachedSnapshot.self, from: data)
+            let decoded = try decoder.decode(CachedSnapshot.self, from: data)
+
+            // iCloud can lag behind the shared container. Keep whichever
+            // snapshot was produced more recently.
+            if let groupSnapshot = loadFromGroup(), groupSnapshot.savedAt > decoded.savedAt {
+                snapshot = groupSnapshot
+                lastRead = Date()
+                lastError = nil
+                note("kept newer app-group snapshot")
+                WidgetCenter.shared.reloadAllTimelines()
+                return
+            }
+
+            snapshot = decoded
             lastRead = Date()
             lastError = nil
 

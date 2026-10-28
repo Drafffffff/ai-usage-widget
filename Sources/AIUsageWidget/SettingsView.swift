@@ -107,9 +107,9 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 9) {
             sectionTitle("DATA SOURCES")
             sourceRow(
-                title: "Claude Code",
-                detail: "Keychain · Claude Code-credentials",
-                ready: LocalCredentials.claudeReady()
+                title: "Claude app",
+                detail: "Cookies · Claude Safe Storage",
+                ready: LocalCredentials.claudeAppReady()
             )
             sourceRow(
                 title: "Codex / ChatGPT",

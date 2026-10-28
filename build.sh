@@ -60,7 +60,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>1.1.1</string>
     <key>CFBundleVersion</key>
     <string>__BUILD__</string>
     <key>LSMinimumSystemVersion</key>
@@ -89,7 +89,7 @@ cat > "$APPEX/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>1.1.1</string>
     <key>CFBundleVersion</key>
     <string>__BUILD__</string>
     <key>CFBundleInfoDictionaryVersion</key>

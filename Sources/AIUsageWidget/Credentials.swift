@@ -1,4 +1,6 @@
 import Foundation
+import CommonCrypto
+import CryptoKit
 
 // MARK: - Local config (0600)
 
@@ -52,6 +54,11 @@ struct ClaudeCredentials {
     var expiresAt: Date?
 }
 
+struct ClaudeAppSession {
+    var sessionKey: String
+    var organization: String
+}
+
 enum LocalCredentials {
     static var home: URL { FileManager.default.homeDirectoryForCurrentUser }
 
@@ -85,6 +92,131 @@ enum LocalCredentials {
         if let env = ProcessInfo.processInfo.environment["OPENCODE_API_KEY"], !env.isEmpty { return "OPENCODE_API_KEY" }
         if openCodeKey() != nil { return "~/.local/share/opencode/auth.json" }
         return nil
+    }
+
+    // MARK: Claude desktop app
+
+    static var claudeCookiesDB: URL {
+        home.appendingPathComponent("Library/Application Support/Claude/Cookies")
+    }
+
+    static func claudeAppSession() -> ClaudeAppSession? {
+        guard let values = claudeCookieValues(),
+              let session = values["sessionKey"], !session.isEmpty,
+              let organization = values["lastActiveOrg"], !organization.isEmpty
+        else { return nil }
+        return ClaudeAppSession(sessionKey: session, organization: organization)
+    }
+
+    static func claudeAppReady() -> Bool {
+        FileManager.default.fileExists(atPath: claudeCookiesDB.path)
+            && keychainExists(service: "Claude Safe Storage")
+    }
+
+    private static func claudeCookieValues() -> [String: String]? {
+        guard FileManager.default.fileExists(atPath: claudeCookiesDB.path) else { return nil }
+
+        let temp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("headroom-claude-cookies-\(UUID().uuidString).db")
+        defer { try? FileManager.default.removeItem(at: temp) }
+        do { try FileManager.default.copyItem(at: claudeCookiesDB, to: temp) } catch { return nil }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+        process.arguments = [
+            temp.path,
+            "select host_key, name, hex(encrypted_value) from cookies where name in ('sessionKey','lastActiveOrg') and host_key in ('.claude.ai','claude.ai');",
+        ]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0,
+              let output = String(data: data, encoding: .utf8)
+        else { return nil }
+
+        guard let passwordData = keychainPassword(service: "Claude Safe Storage"),
+              let password = String(data: passwordData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              let key = pbkdf2(password: password, salt: "saltysalt", iterations: 1003)
+        else { return nil }
+
+        var values: [String: String] = [:]
+        for line in output.split(separator: "\n") {
+            let parts = line.split(separator: "|", omittingEmptySubsequences: false)
+            guard parts.count == 3 else { continue }
+            let host = String(parts[0])
+            let name = String(parts[1])
+            let hex = String(parts[2])
+            if let value = decryptCookie(host: host, hex: hex, key: key) {
+                values[name] = value
+            }
+        }
+        return values
+    }
+
+    private static func decryptCookie(host: String, hex: String, key: Data) -> String? {
+        guard let encrypted = dataFromHex(hex), encrypted.count > 3,
+              encrypted.prefix(3) == Data("v10".utf8)
+        else { return nil }
+        guard var plain = aes128CBCDecrypt(Data(encrypted.dropFirst(3)), key: key) else { return nil }
+
+        // Chromium prefixes the plaintext with SHA256(host_key).
+        let hostHash = Data(SHA256.hash(data: Data(host.utf8)))
+        if plain.count > 32, plain.prefix(32) == hostHash {
+            plain = Data(plain.dropFirst(32))
+        }
+        return String(data: plain, encoding: .utf8)
+    }
+
+    private static func pbkdf2(password: String, salt: String, iterations: UInt32) -> Data? {
+        let passwordBytes = Array(password.utf8)
+        let saltBytes = Array(salt.utf8)
+        var derived = [UInt8](repeating: 0, count: 16)
+        let status = CCKeyDerivationPBKDF(
+            CCPBKDFAlgorithm(kCCPBKDF2),
+            passwordBytes, passwordBytes.count,
+            saltBytes, saltBytes.count,
+            CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA1),
+            iterations,
+            &derived, derived.count
+        )
+        return status == kCCSuccess ? Data(derived) : nil
+    }
+
+    private static func aes128CBCDecrypt(_ ciphertext: Data, key: Data) -> Data? {
+        let iv = [UInt8](repeating: 0x20, count: kCCBlockSizeAES128)
+        var output = [UInt8](repeating: 0, count: ciphertext.count + kCCBlockSizeAES128)
+        var outputLength = 0
+        let status = ciphertext.withUnsafeBytes { input in
+            key.withUnsafeBytes { keyBytes in
+                CCCrypt(
+                    CCOperation(kCCDecrypt),
+                    CCAlgorithm(kCCAlgorithmAES),
+                    CCOptions(kCCOptionPKCS7Padding),
+                    keyBytes.baseAddress, key.count,
+                    iv,
+                    input.baseAddress, ciphertext.count,
+                    &output, output.count,
+                    &outputLength
+                )
+            }
+        }
+        return status == kCCSuccess ? Data(output.prefix(outputLength)) : nil
+    }
+
+    private static func dataFromHex(_ hex: String) -> Data? {
+        var data = Data()
+        var index = hex.startIndex
+        while index < hex.endIndex {
+            let next = hex.index(index, offsetBy: 2, limitedBy: hex.endIndex) ?? hex.endIndex
+            guard let byte = UInt8(hex[index..<next], radix: 16) else { return nil }
+            data.append(byte)
+            index = next
+        }
+        return data
     }
 
     // MARK: Claude Code

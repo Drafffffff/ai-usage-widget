@@ -74,11 +74,11 @@ The iOS app refreshes when foregrounded and supports pull-to-refresh. A free App
 | Provider | Endpoint | Credential |
 |---|---|---|
 | OpenCode Go | `GET https://opencode.ai/zen/go/v1/usage` | API key from `~/Library/Application Support/AIUsageWidget/config.json`, `OPENCODE_API_KEY`, or `~/.local/share/opencode/auth.json` |
-| Claude (Pro/Max) | `GET https://api.anthropic.com/api/oauth/usage` | Claude Code OAuth token from the macOS Keychain (`Claude Code-credentials`) or `~/.claude/.credentials.json` (read-only) |
+| Claude (Pro/Max) | `GET https://claude.ai/api/organizations/{org}/usage` | Claude desktop app session cookies (`~/Library/Application Support/Claude/Cookies`, decrypted with `Claude Safe Storage`); Claude Code OAuth is a fallback (read-only) |
 | OpenAI Codex | `GET https://chatgpt.com/backend-api/wham/usage` | `~/.codex/auth.json` (read-only) |
 | Cursor | `POST https://api2.cursor.sh/aiserver.v1.DashboardService/GetCurrentPeriodUsage` | Cursor `state.vscdb` session token (read-only) |
 
-Credentials are only read. Nothing is uploaded or written back. If the Claude token has expired, open Claude Code once to refresh it; Headroom never writes to Claude's credentials. The OpenCode key is stored in `config.json` with directory permissions `0700` and file permissions `0600`.
+Credentials are only read. Nothing is uploaded or written back. Claude usage comes from the Claude desktop app's own session, so keep the Claude app signed in; Headroom never writes to its cookies or credentials. The OpenCode key is stored in `config.json` with directory permissions `0700` and file permissions `0600`.
 
 ## Updates and background behavior
 
