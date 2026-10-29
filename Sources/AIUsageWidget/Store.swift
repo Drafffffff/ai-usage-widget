@@ -85,7 +85,7 @@ final class Store: ObservableObject {
         }
         guard lastRefresh != nil || !visible.isEmpty || enabledKinds.isEmpty else { return }
 
-        let snapshot = CachedSnapshot(providers: visible, savedAt: Date())
+        let snapshot = CachedSnapshot(providers: visible, savedAt: Date(), syncURL: LocalServer.url)
         WidgetData.write(snapshot)
         WidgetCenter.shared.reloadAllTimelines()
     }

@@ -23,6 +23,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.openSettings = { [weak self] in self?.showSettings() }
 
         setupStatusItem()
+        LocalServer.shared.start()
         store.publishWidgetSnapshot()
         store.refresh()
 

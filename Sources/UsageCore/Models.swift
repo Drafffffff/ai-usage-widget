@@ -104,6 +104,8 @@ struct ProviderUsage: Codable, Identifiable, Hashable {
 struct CachedSnapshot: Codable {
     var providers: [ProviderUsage]
     var savedAt: Date
+    /// LAN endpoint the iOS app and widget can read without opening the app.
+    var syncURL: String? = nil
 }
 
 enum Format {

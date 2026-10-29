@@ -9,10 +9,24 @@ struct UsageEntry: TimelineEntry {
 enum SharedSnapshot {
     static let groupID = "group.com.drafff.aiusagewidget.ios"
 
+    static var groupURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID)
+    }
+
     static var fileURL: URL? {
-        FileManager.default
-            .containerURL(forSecurityApplicationGroupIdentifier: groupID)?
-            .appendingPathComponent("widget.json")
+        groupURL?.appendingPathComponent("widget.json")
+    }
+
+    static var endpoint: URL? {
+        if let url = groupURL?.appendingPathComponent("endpoint.txt"),
+           let value = try? String(contentsOf: url, encoding: .utf8),
+           let endpoint = URL(string: value.trimmingCharacters(in: .whitespacesAndNewlines)) {
+            return endpoint
+        }
+        if let value = load()?.syncURL {
+            return URL(string: value)
+        }
+        return nil
     }
 
     static func load() -> CachedSnapshot? {
@@ -20,6 +34,26 @@ enum SharedSnapshot {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(CachedSnapshot.self, from: data)
+    }
+
+    static func store(_ data: Data) {
+        guard let url = fileURL else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    static func fetch(_ url: URL) async -> (CachedSnapshot, Data)? {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 5
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return (try decoder.decode(CachedSnapshot.self, from: data), data)
+        } catch {
+            return nil
+        }
     }
 }
 
@@ -34,8 +68,26 @@ struct UsageProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<UsageEntry>) -> Void) {
-        let entry = UsageEntry(date: Date(), snapshot: SharedSnapshot.load())
-        completion(Timeline(entries: [entry], policy: .after(Date().addingTimeInterval(30 * 60))))
+        let cached = SharedSnapshot.load()
+        guard let endpoint = SharedSnapshot.endpoint else {
+            completion(Timeline(
+                entries: [UsageEntry(date: Date(), snapshot: cached)],
+                policy: .after(Date().addingTimeInterval(15 * 60))
+            ))
+            return
+        }
+
+        Task {
+            let remote = await SharedSnapshot.fetch(endpoint)
+            if let remote {
+                SharedSnapshot.store(remote.1)
+            }
+            let snapshot = remote?.0 ?? cached
+            completion(Timeline(
+                entries: [UsageEntry(date: Date(), snapshot: snapshot)],
+                policy: .after(Date().addingTimeInterval(15 * 60))
+            ))
+        }
     }
 }
 

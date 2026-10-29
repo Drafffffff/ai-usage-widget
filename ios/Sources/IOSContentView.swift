@@ -144,6 +144,19 @@ struct IOSContentView: View {
                 .font(.system(size: 8.5))
                 .foregroundStyle(Palette.faint.opacity(0.7))
                 .multilineTextAlignment(.center)
+            Button {
+                NotificationScheduler.shared.scheduleTest()
+            } label: {
+                Text("发送测试通知")
+                    .font(.system(size: 9.5, weight: .semibold))
+                    .foregroundStyle(Palette.faint)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Capsule().fill(Color.white.opacity(0.05)))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 6)
+
             if !store.debugText.isEmpty {
                 Text(store.debugText)
                     .font(.system(size: 7.5, design: .monospaced))

@@ -60,7 +60,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.1</string>
+    <string>1.2.0</string>
     <key>CFBundleVersion</key>
     <string>__BUILD__</string>
     <key>LSMinimumSystemVersion</key>
@@ -69,6 +69,10 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Headroom serves your usage snapshot to your iPhone on the local network.</string>
+    <key>NSBonjourServices</key>
+    <array><string>_headroom._tcp</string></array>
 </dict>
 </plist>
 PLIST
@@ -89,7 +93,7 @@ cat > "$APPEX/Contents/Info.plist" <<'PLIST'
     <key>CFBundlePackageType</key>
     <string>XPC!</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.1</string>
+    <string>1.2.0</string>
     <key>CFBundleVersion</key>
     <string>__BUILD__</string>
     <key>CFBundleInfoDictionaryVersion</key>

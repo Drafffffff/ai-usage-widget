@@ -17,6 +17,8 @@ Native macOS and iOS widgets for the remaining budgets of **OpenCode Go**, **Ant
 - **Menu bar host** fetches every 5 minutes (and after wake), writes a snapshot into the widget container, and asks WidgetKit to reload.
 - **Tap a provider row** to open its usage dashboard; tapping the background launches the menu bar app.
 - **Full-color and monochrome widget styles** are both supported (macOS 26 widget style).
+- **Quota reset notifications** on iOS: local notifications scheduled at each provider's reset time, labelled by service and quota window, deduplicated by reset timestamp.
+- **iOS widget auto-refresh**: the Mac serves the snapshot on the LAN; the widget fetches it on its timeline without opening the app.
 - Native SwiftUI / WidgetKit. No Electron, no background web view.
 
 ## Requirements
@@ -67,7 +69,21 @@ cd ios && xcodegen generate && open AIUsageIOS.xcodeproj
 
 The app writes each successful snapshot into the shared App Group container, and the WidgetKit extension reads it. The widget and app share data through `group.com.drafff.aiusagewidget.ios`; both are signed with the same team.
 
-The iOS app refreshes when foregrounded and supports pull-to-refresh. A free Apple ID can install it, but the signature expires after 7 days; re-run from Xcode to renew.
+The iOS app refreshes when foregrounded and supports pull-to-refresh. A free Apple ID can install it, but the signature expires after 7 days; re-run from Xcode to renew. Reinstalling may require **Settings → General → VPN & Device Management → Trust** before the app can launch.
+
+### Reset notifications
+
+On first launch the app asks for notification permission. It schedules one local notification per future quota reset (5h, week, month, billing cycle) and labels it with the service and window. Identifiers include the service, window and reset timestamp, so syncing the same reset again cannot create duplicates; stale resets are cancelled. Notifications are delivered by iOS even when the app is closed. The test button at the bottom of the app schedules a notification in 5 seconds.
+
+### iOS widget refresh without opening the app
+
+The Mac host serves the current snapshot at `http://<mac-hostname>:48765/usage.json` and advertises `_headroom._tcp`. The snapshot contains that URL; the app stores it in the shared App Group and the widget fetches it directly.
+
+- Same Wi-Fi as the Mac is required for fresh data.
+- The Mac app must be running, and macOS must allow incoming connections for it.
+- iOS asks for **Local Network** permission the first time the app fetches; allow it.
+- WidgetKit decides when the widget timeline runs; the provider requests a 15-minute refresh but iOS may throttle it (typically 15–30 minutes, sometimes longer). The widget falls back to the cached App Group snapshot when the Mac is unreachable.
+- If the app has never been opened since installation, iOS cannot grant notification or local-network permissions.
 
 ## Data sources
 

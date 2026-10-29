@@ -12,6 +12,8 @@ final class IOSStore: ObservableObject {
     private let bookmarkKey = "syncFolderBookmark"
     private let folderNameKey = "syncFolderName"
     private let bookmarkKindKey = "syncBookmarkKind"
+    private let groupID = "group.com.drafff.aiusagewidget.ios"
+    private var lanTask: Task<Void, Never>?
 
     init() {
         folderName = UserDefaults.standard.string(forKey: folderNameKey)
@@ -63,96 +65,144 @@ final class IOSStore: ObservableObject {
     }
 
     func reload() {
-        guard let bookmark = UserDefaults.standard.data(forKey: bookmarkKey) else {
-            note("no bookmark")
-            if let cached = loadFromGroup() {
-                snapshot = cached
-                lastError = nil
-                lastRead = Date()
-                WidgetCenter.shared.reloadAllTimelines()
-                note("loaded app-group fallback")
-            } else {
-                lastError = "尚未选择同步文件夹"
+        if let bookmark = UserDefaults.standard.data(forKey: bookmarkKey) {
+            do {
+                var stale = false
+                let url = try URL(
+                    resolvingBookmarkData: bookmark,
+                    options: [],
+                    relativeTo: nil,
+                    bookmarkDataIsStale: &stale
+                )
+                note("resolved stale=\(stale) \(url.path)")
+                let values = try? url.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])
+                note("ubiquitous=\(values?.isUbiquitousItem ?? false) download=\(values?.ubiquitousItemDownloadingStatus?.rawValue ?? "-")")
+                try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+
+                guard url.startAccessingSecurityScopedResource() else {
+                    note("startAccessing failed")
+                    fallbackToGroup(message: "无法访问同步文件夹")
+                    return
+                }
+                defer { url.stopAccessingSecurityScopedResource() }
+
+                let kind = UserDefaults.standard.string(forKey: bookmarkKindKey) ?? "folder"
+                let data: Data
+                if kind == "file" {
+                    data = try readCoordinated(url)
+                } else {
+                    data = try readSnapshotData(in: url)
+                }
+                let decoder = JSONDecoder()
+                decoder.dateDecodingStrategy = .iso8601
+                let decoded = try decoder.decode(CachedSnapshot.self, from: data)
+
+                // iCloud can lag behind the shared container or the LAN snapshot.
+                if let groupSnapshot = loadFromGroup(), groupSnapshot.savedAt > decoded.savedAt {
+                    apply(groupSnapshot, rawData: nil, source: "app-group (newer)")
+                } else {
+                    apply(decoded, rawData: data, source: "iCloud")
+                }
+
+                if stale,
+                   let refreshed = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
+                    UserDefaults.standard.set(refreshed, forKey: bookmarkKey)
+                }
+            } catch {
+                let ns = error as NSError
+                note("FAILED \(ns.domain) \(ns.code) \(ns.localizedDescription)")
+                fallbackToGroup(message: "读取失败 \(ns.code)")
             }
-            return
+        } else {
+            note("no bookmark")
+            fallbackToGroup(message: "尚未选择同步文件夹")
+        }
+    }
+
+    private func fallbackToGroup(message: String) {
+        if let cached = loadFromGroup() {
+            apply(cached, rawData: nil, source: "app-group")
+        } else {
+            lastError = message
+        }
+    }
+
+    private func apply(_ snapshot: CachedSnapshot, rawData: Data?, source: String, refreshLAN: Bool = true) {
+        self.snapshot = snapshot
+        lastRead = Date()
+        lastError = nil
+
+        if let rawData, let url = groupURL("widget.json") {
+            try? rawData.write(to: url, options: .atomic)
+        }
+        if let endpoint = snapshot.syncURL {
+            writeEndpoint(endpoint)
         }
 
-        do {
-            var stale = false
-            let url = try URL(
-                resolvingBookmarkData: bookmark,
-                options: [],
-                relativeTo: nil,
-                bookmarkDataIsStale: &stale
-            )
-            note("resolved stale=\(stale) \(url.path)")
-            let values = try? url.resourceValues(forKeys: [.isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey])
-            note("ubiquitous=\(values?.isUbiquitousItem ?? false) download=\(values?.ubiquitousItemDownloadingStatus?.rawValue ?? "-")")
-            try? FileManager.default.startDownloadingUbiquitousItem(at: url)
+        NotificationScheduler.shared.sync(snapshot)
+        WidgetCenter.shared.reloadAllTimelines()
+        note("\(source) providers=\(snapshot.providers.count)")
 
-            guard url.startAccessingSecurityScopedResource() else {
-                note("startAccessing failed")
-                lastError = "无法访问同步文件夹（请重新选择）"
-                return
-            }
-            defer { url.stopAccessingSecurityScopedResource() }
+        if refreshLAN { scheduleLANRefresh() }
+    }
 
-            let kind = UserDefaults.standard.string(forKey: bookmarkKindKey) ?? "folder"
-            let data: Data
-            if kind == "file" {
-                data = try readCoordinated(url)
+    private func scheduleLANRefresh() {
+        guard lanTask == nil else { return }
+        guard let endpoint = snapshot?.syncURL ?? readEndpoint(),
+              let url = URL(string: endpoint)
+        else { return }
+
+        lanTask = Task { [weak self] in
+            let result = await Self.fetchLAN(url)
+            guard let self else { return }
+            self.lanTask = nil
+            if let (remote, data) = result {
+                if remote.savedAt > (self.snapshot?.savedAt ?? .distantPast) {
+                    self.apply(remote, rawData: data, source: "LAN", refreshLAN: false)
+                } else {
+                    self.note("LAN snapshot not newer")
+                }
             } else {
-                data = try readSnapshotData(in: url)
-            }
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            let decoded = try decoder.decode(CachedSnapshot.self, from: data)
-
-            // iCloud can lag behind the shared container. Keep whichever
-            // snapshot was produced more recently.
-            if let groupSnapshot = loadFromGroup(), groupSnapshot.savedAt > decoded.savedAt {
-                snapshot = groupSnapshot
-                lastRead = Date()
-                lastError = nil
-                note("kept newer app-group snapshot")
-                WidgetCenter.shared.reloadAllTimelines()
-                return
-            }
-
-            snapshot = decoded
-            lastRead = Date()
-            lastError = nil
-
-            if let group = FileManager.default.containerURL(
-                forSecurityApplicationGroupIdentifier: "group.com.drafff.aiusagewidget.ios"
-            ) {
-                try? data.write(to: group.appendingPathComponent("widget.json"), options: .atomic)
-                WidgetCenter.shared.reloadAllTimelines()
-            }
-            NSLog("AIUsageIOS sync: loaded \(snapshot?.providers.count ?? 0) providers")
-
-            if stale,
-               let refreshed = try? url.bookmarkData(options: [], includingResourceValuesForKeys: nil, relativeTo: nil) {
-                UserDefaults.standard.set(refreshed, forKey: bookmarkKey)
-            }
-        } catch {
-            let ns = error as NSError
-            note("FAILED \(ns.domain) \(ns.code) \(ns.localizedDescription)")
-            if let cached = loadFromGroup() {
-                snapshot = cached
-                lastError = "显示最近同步数据"
-                lastRead = Date()
-                WidgetCenter.shared.reloadAllTimelines()
-            } else {
-                lastError = "读取失败 \(ns.code)：\(ns.localizedDescription)"
+                self.note("LAN fetch failed")
             }
         }
     }
 
+    private static func fetchLAN(_ url: URL) async -> (CachedSnapshot, Data)? {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 6
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return (try decoder.decode(CachedSnapshot.self, from: data), data)
+        } catch {
+            return nil
+        }
+    }
+
+    private func groupURL(_ name: String) -> URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: groupID)?
+            .appendingPathComponent(name)
+    }
+
+    private func writeEndpoint(_ endpoint: String) {
+        guard let url = groupURL("endpoint.txt") else { return }
+        try? endpoint.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    private func readEndpoint() -> String? {
+        guard let url = groupURL("endpoint.txt"),
+              let value = try? String(contentsOf: url, encoding: .utf8)
+        else { return nil }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func loadFromGroup() -> CachedSnapshot? {
-        guard let url = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: "group.com.drafff.aiusagewidget.ios"
-        )?.appendingPathComponent("widget.json"),
+        guard let url = groupURL("widget.json"),
               let data = try? Data(contentsOf: url)
         else { return nil }
         let decoder = JSONDecoder()
